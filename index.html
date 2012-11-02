@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="jquery.js"></script>
+        <script type="text/javascript" src="flot/jquery.flot.js"></script>
+        <script tyep="text/javascript">
+            (function ($) {
+                function processRawData(plot, series, datapoints) {
+                    // we normalize the area of each symbol so it is approximately the
+                    // same as a circle of the given radius
+
+                    var handlers = {
+                        square: function (ctx, x, y, radius, shadow) {
+                            // pi * r^2 = (2s)^2  =>  s = r * sqrt(pi)/2
+                            var size = radius * Math.sqrt(Math.PI) / 2;
+                            ctx.rect(x - size, y - size, size + size, size + size);
+                        },
+                        diamond: function (ctx, x, y, radius, shadow) {
+                            // pi * r^2 = 2s^2  =>  s = r * sqrt(pi/2)
+                            var size = radius * Math.sqrt(Math.PI / 2);
+                            ctx.moveTo(x - size, y);
+                            ctx.lineTo(x, y - size);
+                            ctx.lineTo(x + size, y);
+                            ctx.lineTo(x, y + size);
+                            ctx.lineTo(x - size, y);
+                        },
+                        triangle: function (ctx, x, y, radius, shadow) {
+                            // pi * r^2 = 1/2 * s^2 * sin (pi / 3)  =>  s = r * sqrt(2 * pi / sin(pi / 3))
+                            var size = radius * Math.sqrt(2 * Math.PI / Math.sin(Math.PI / 3));
+                            var height = size * Math.sin(Math.PI / 3);
+                            ctx.moveTo(x - size/2, y + height/2);
+                            ctx.lineTo(x + size/2, y + height/2);
+                            if (!shadow) {
+                                ctx.lineTo(x, y - height/2);
+                                ctx.lineTo(x - size/2, y + height/2);
+                            }
+                        },
+                        cross: function (ctx, x, y, radius, shadow) {
+                            // pi * r^2 = (2s)^2  =>  s = r * sqrt(pi)/2
+                            var size = radius * Math.sqrt(Math.PI) / 2;
+                            ctx.moveTo(x - size, y - size);
+                            ctx.lineTo(x + size, y + size);
+                            ctx.moveTo(x - size, y + size);
+                            ctx.lineTo(x + size, y - size);
+                        }
+                    }
+
+                    var s = series.points.symbol;
+                    if (handlers[s])
+                    series.points.symbol = handlers[s];
+                }
+
+                function init(plot) {
+                    plot.hooks.processDatapoints.push(processRawData);
+                }
+
+                $.plot.plugins.push({
+                    init: init,
+                    name: 'symbols',
+                    version: '1.0'
+                });
+            })(jQuery);
+ 
+            $(function(){
+                var symbols = ['circle', 'square', 'diamond', 'triangle', 'cross'];
+                var datas = {};
+                var get_ticks = function(range, logscale){
+                    var min = range[0];
+                    var max = range[1];
+                    var ticks = [];
+
+                    if(logscale) {
+                        if(Math.abs(min) < 1e-10)
+                            min = 1e-10;
+                        var lmin = Math.log(min);
+                        var lmax = Math.log(max);
+                        var step = (lmax - lmin) / 10;
+                        for(var i = 0; i < 10; ++i) {
+                            var cur_tick = Math.exp(lmin + step * i);
+                            ticks.push([cur_tick, cur_tick.toPrecision(3)]);
+                        }
+                    } else {
+                        var step = (max - min) / 10;
+                        for(var i = 0; i < 10; ++i) {
+                            var cur_tick = min + step * i;
+                            ticks.push([cur_tick, cur_tick.toPrecision(3)]);
+                        }
+                    }
+                    return ticks;
+                };
+                var do_plot = function(){
+                    var show_types = {};
+                    if($('input[name=show_cach_register]').is(':checked'))
+                        show_types['cash_register'] = 1;
+                    if($('input[name=show_turnstile]').is(':checked'))
+                        show_types['turnstile'] = 1;
+
+                    $('#figure').width($('input[name=width]').val());
+                    $('#figure').height($('input[name=height]').val());
+                
+                    var keys = [$('#xlabel').val(), $('#ylabel').val()];
+                    var xrange = null;
+                    var yrange = null;
+
+                    var dataset = $('#input_data').val();
+
+                    var series = [];
+                    for(var k in datas) {
+                        var cur_data = datas[k];
+                        var data = [];
+                        for(var i in cur_data){
+                            if(cur_data[i]['data'] != dataset) continue;
+                            if(!(cur_data[i]['type'] in show_types)) continue;
+
+                            var x = cur_data[i][keys[0]];
+                            var y = cur_data[i][keys[1]];
+                            if(xrange == null){
+                                xrange = [x,x];
+                            }else {
+                                xrange = [Math.min(xrange[0], x), Math.max(xrange[1], x)];
+                            }
+                            if(yrange == null){
+                                yrange = [y,y];
+                            }else {
+                                yrange = [Math.min(yrange[0], y), Math.max(yrange[1], y)];
+                            }
+                                
+                            data.push([x, y]);
+                        }
+                        if(data.length > 0) {
+                            data.sort(function(x,y){return x[0]-y[0];});
+                            series.push({'label':k, 'data':data,});
+                        }
+                    }
+                    console.log(series);
+                    if(series.length == 0) {
+                        $('#figure').empty();
+                    } else {
+                        series.sort(function(x,y){return x['label'].localeCompare(y['label']);});
+
+                        console.log('X Range:' + xrange);
+                        console.log('Y Range:' + yrange);
+                        $.plot($('#figure'), series, {
+                            series : {
+                                lines : { show : true },
+                                points : { show : true }
+                            },
+                            grid : {
+                                hoverable : true
+                            },
+                            legend : {
+                                container : $('#legend_container')
+                            },
+                            xaxis:{
+                                min : xrange[0],
+                                max : xrange[1],
+                                transform : $('input[name=xlog]').is(':checked') 
+                                    ? function(v) { if(Math.abs(v) < 1e-10) v = 1e-10; return Math.log(v); }
+                                    : function(v) { return v; },
+                                inverseTransform : $('input[name=xlog]').is(':checked') 
+                                    ? function(v) { return Math.exp(v); }
+                                    : function(v) { return v; },
+                                ticks : get_ticks(xrange, $('input[name=xlog]').is(':checked')),
+                                _ : null
+                            },
+                            yaxis:{
+                                min : yrange[0],
+                                max : yrange[1],
+                                transform : $('input[name=ylog]').is(':checked') 
+                                    ? function(v) { if(Math.abs(v) < 1e-10) v = 1e-10; return Math.log(v); }
+                                    : function(v) { return v; },
+                                inverseTransform : $('input[name=ylog]').is(':checked') 
+                                    ? function(v) { return Math.exp(v); }
+                                    : function(v) { return v; },
+                                ticks : get_ticks(yrange, $('input[name=ylog]').is(':checked')),
+                                _ : null
+                            }
+                        });
+                    }
+                };
+
+                var last_hovered = null;
+                $('#figure').bind('plothover', function(event, pos, item) {
+                    $('#mouse_x_text').text(pos.x.toPrecision(3));
+                    $('#mouse_y_text').text(pos.y.toPrecision(3));
+
+                    if(item) {
+                        if(last_hovered != item.dataIndex) {
+                            //last_hovered = item.dataIndex;
+                            $('#tooltip').remove();
+                            $('<div id="tooltip">' + item.series.label + '</div>').css({
+                                position: 'absolute',
+                                display: 'none',
+                                top: item.pageY + 5,
+                                left: item.pageX + 5,
+                                border: '1px solid #fdd',
+                                padding: '2px',
+                                'background-color': '#fee',
+                                opacity: 0.8
+                            }).appendTo('body').fadeIn(200);
+                        }
+                    } else {
+                        $('#tooltip').remove();
+                        last_hovered = null;
+                    }
+                });
+
+                $('#btn_update').click(function(){
+                    do_plot();
+                });
+
+                $.get('data.json?'+Math.random(), function(data){
+                    var ds = {}
+                    for(var i in data) {
+                        var obj = data[i];
+                        var n = obj.algorithm;
+                        if (!(n in datas))
+                            datas[n] = [];
+                        datas[n].push(obj);
+
+                        ds[obj.data] = 1;
+                    }
+                    var data_opt = $('#input_data');
+                    var keys = [];
+                    for(var k in ds)
+                        keys.push(k);
+                    keys.sort();
+                    for(var i in keys) {
+                        var k = keys[i];
+                        data_opt.append('<option value="' + k + '">' + k + '</option>');
+                    }
+                    do_plot();
+                }, 'json');
+            });
+        </script>
+    </head>
+    <body>
+        <div style="margin-top:20px;margin-bottom:13px;padding:7px;border:1px solid;width:400px;">
+            <input type="checkbox" name="show_cach_register" checked>Cash Register
+            <input type="checkbox" name="show_turnstile" checked>Turnstile<br/>
+            X axis
+            <select id="xlabel">
+                <option value="eps" selected>eps</option>
+                <option value="cpu_time">time</option>
+                <option value="size">size</option>
+                <option value="max_err">max_err</option>
+                <option value="avg_err">avg_err</option>
+            </select>
+            <input type="checkbox" name="xlog" checked>Log scale 
+            
+            <br/>
+            Y axis
+            <select id="ylabel">
+                <option value="eps">eps</option>
+                <option value="cpu_time">time</option>
+                <option value="size">size</option>
+                <option value="max_err">max_err</option>
+                <option value="avg_err" selected>avg_err</option>
+            </select>
+            <input type="checkbox" name="ylog" checked>Log scale <br/>
+            Size: <input type="text" name="width" value="800" size="5"> x <input type="text" name="height" value="600" size="5"><br/>
+            Data:
+            <select id="input_data">
+            </select><br/>
+            <button id="btn_update">Update</button><br/>
+
+                <div id="legend_container"></div><br/>
+        </div>
+        <div style="position:absolute;right:20px;top:20px;">
+            Move your mouse cursor over the circles to show the algorithm name<br/>
+            X: <span id='mouse_x_text'></span><br/>
+            Y: <span id='mouse_y_text'></span><br/>
+            <div id="figure"></div>
+        </div>
+
+    </body>
+</html>
+    
