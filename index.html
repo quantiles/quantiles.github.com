@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title>Quantiles over Data Streams: An Experimental Study</title>
         <script type="text/javascript" src="jquery.js"></script>
         <script type="text/javascript" src="flot/jquery.flot.js"></script>
         <script tyep="text/javascript">
@@ -210,6 +211,8 @@
                 });
 
                 $.get('data.json?'+Math.random(), function(data){
+                    $('#loading_text').hide();
+                    $('#instructions_text').show();
                     var ds = {}
                     for(var i in data) {
                         var obj = data[i];
@@ -240,11 +243,11 @@
             <input type="checkbox" name="show_turnstile" checked>Turnstile<br/>
             X axis
             <select id="xlabel">
-                <option value="eps" selected>eps</option>
-                <option value="cpu_time">time</option>
-                <option value="size">size</option>
-                <option value="max_err">max_err</option>
-                <option value="avg_err">avg_err</option>
+                <option value="eps" selected>epsilon</option>
+                <option value="cpu_time">Update Time(microsecond)</option>
+                <option value="size">Space(MB)</option>
+                <option value="max_err">Max Error</option>
+                <option value="avg_err">Average Error</option>
             </select>
             <input type="checkbox" name="xlog" checked>Log scale 
             
@@ -264,10 +267,24 @@
             </select><br/>
             <button id="btn_update">Update</button><br/>
 
-                <div id="legend_container"></div><br/>
+            <div id="legend_container"></div><br/>
+            <div id="loading_text">Loading data... Please wait</div>
+            <div id="instructions_text" style="display:none;">
+                <h3>Instructions</h3>
+                <ul>
+                    <li>Select the model, axis property, data set and press the <b>Update</b> button.</li>
+                    <li>Move your mouse cursor over the points to show the algorithm name.</li>
+                </ul>
+                Data sets are labeled as DISTRIBUTION_UNIVERSE SIZE_LENGTH[_DEVIATION][_ORDER], for example<br>
+                <ul>
+                    <li><b>MPCATOBS_24_87688123</b>: real data, universe size=2^24, length=876688123, (real data order)</li>
+                    <li><b>normal_16_8_0.15</b>: normal distribution, universe size=2^16, length=10^9, deviation=0.15*universe size, (random order)</li>
+                    <li><b>uniform_32_8_sorted</b>: uniform distribution, universe size=2^32, length=10^8, sorted order
+                </ul>
+
+            </div>
         </div>
         <div style="position:absolute;right:20px;top:20px;">
-            Move your mouse cursor over the circles to show the algorithm name<br/>
             X: <span id='mouse_x_text'></span><br/>
             Y: <span id='mouse_y_text'></span><br/>
             <div id="figure"></div>
