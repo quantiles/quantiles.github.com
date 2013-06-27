@@ -4,7 +4,7 @@
         <title>Quantiles over Data Streams: An Experimental Study</title>
         <script type="text/javascript" src="jquery.js"></script>
         <script type="text/javascript" src="flot/jquery.flot.js"></script>
-        <script tyep="text/javascript">
+        <script type="text/javascript">
             (function ($) {
                 function processRawData(plot, series, datapoints) {
                     // we normalize the area of each symbol so it is approximately the
@@ -238,13 +238,13 @@
         </script>
     </head>
     <body>
-        <div style="margin-top:20px;margin-bottom:13px;padding:7px;border:1px solid;width:400px;">
+        <div style="margin-top:20px;margin-bottom:13px;padding:7px;border:1px solid;width:300px;float:left;">
             <input type="checkbox" name="show_cach_register" checked>Cash Register
             <input type="checkbox" name="show_turnstile" checked>Turnstile<br/>
             X axis
             <select id="xlabel">
                 <option value="eps" selected>epsilon</option>
-                <option value="cpu_time">Update Time(microsecond)</option>
+                <option value="cpu_time">Update Time(ms)</option>
                 <option value="size">Space(MB)</option>
                 <option value="max_err">Max Error</option>
                 <option value="avg_err">Average Error</option>
@@ -284,7 +284,7 @@
 
             </div>
         </div>
-        <div style="position:absolute;right:20px;top:20px;">
+        <div style="margin-right:20px;margin-top:20px;">
             X: <span id='mouse_x_text'></span> Y: <span id='mouse_y_text'></span><br/>
             <div id="figure"></div>
         </div>
